@@ -9,7 +9,7 @@ import { assertEquals } from "https://deno.land/std@0.161.0/testing/asserts.ts";
 
 type Token = string;
 
-function tokenizer(input: string): Token[] {
+export function tokenizer(input: string): Token[] {
   // immutable array
   const tokens: Token[] = [];
 
@@ -88,7 +88,7 @@ function tokenizer(input: string): Token[] {
       (squareBracketNestCount > 0 || curlyBracketNestCount > 0 ||
         angleBracketNestCount > 0)
     ) {
-      tokens.push(tmpToken);
+      tokens.push(tmpToken.trimEnd());
       tmpToken = "";
       tokens.push(targetChar);
       current++;
@@ -103,6 +103,9 @@ function tokenizer(input: string): Token[] {
       tmpToken += targetChar;
       current++;
     }
+  }
+  if (tmpToken !== "") {
+    tokens.push(tmpToken);
   }
   return tokens;
 }
@@ -162,7 +165,31 @@ Deno.test("example", () => {
   assertEquals(tokens, ["[", "*", "[", "/", "文字列", "]", "]"]);
 });
 
-Deno.test("]]", () => {
-  const tokens = tokenizer("]]");
-  assertEquals(tokens, ["]", "]"]);
+Deno.test("escaped bracket", () => {
+  const tokens = tokenizer("\\[aaa\\]");
+  assertEquals(tokens, ["\[aaa\]"]);
+});
+
+Deno.test("escaped bracket", () => {
+  const tokens = tokenizer("\\<enh>");
+  assertEquals(tokens, ["\<enh>"]);
+});
+
+Deno.test("escaped bracket", () => {
+  const tokens = tokenizer("\\[enh][]");
+  assertEquals(tokens, ["\[enh]", "[", "]"]);
+});
+
+Deno.test("example a", () => {
+  const tokens = tokenizer("{li this is whitespace , hi, me}");
+  assertEquals(tokens, [
+    "{",
+    "li",
+    "this is whitespace",
+    ",",
+    "hi",
+    ",",
+    "me",
+    "}",
+  ]);
 });
