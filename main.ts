@@ -1,8 +1,4 @@
-import {
-  assertArrayIncludes,
-  assertEquals,
-  unimplemented,
-} from "https://deno.land/std@0.161.0/testing/asserts.ts";
+import { assertEquals } from "https://deno.land/std@0.161.0/testing/asserts.ts";
 
 // type TokenType = "CurlyBracket" | "SquareBracket" | "Letter" | "Comma";
 // type TokenValue = "{" | "}" | "[" | "]" | "," | string;
@@ -22,6 +18,10 @@ function tokenizer(input: string): Token[] {
   let escaping = false;
   let searchingCommandName = false;
 
+  let angleBracketNestCount = 0;
+  let squareBracketNestCount = 0;
+  let curlyBracketNestCount = 0;
+
   while (current < input.length) {
     const targetChar = input[current];
 
@@ -33,6 +33,7 @@ function tokenizer(input: string): Token[] {
       escaping = true;
       current++;
     } else if (targetChar === "<") {
+      angleBracketNestCount++;
       if (tmpToken !== "") {
         tokens.push(tmpToken);
         tmpToken = "";
@@ -40,7 +41,8 @@ function tokenizer(input: string): Token[] {
       tokens.push(targetChar);
       current++;
       searchingCommandName = true;
-    } else if (targetChar == ">") {
+    } else if (targetChar == ">" && angleBracketNestCount > 0) {
+      angleBracketNestCount--;
       if (tmpToken !== "") {
         tokens.push(tmpToken.trim());
         tmpToken = "";
@@ -48,6 +50,7 @@ function tokenizer(input: string): Token[] {
       tokens.push(targetChar);
       current++;
     } else if (targetChar === "[") {
+      squareBracketNestCount++;
       if (tmpToken !== "") {
         tokens.push(tmpToken);
         tmpToken = "";
@@ -55,7 +58,8 @@ function tokenizer(input: string): Token[] {
       tokens.push(targetChar);
       current++;
       searchingCommandName = true;
-    } else if (targetChar == "]") {
+    } else if (targetChar == "]" && squareBracketNestCount > 0) {
+      squareBracketNestCount--;
       if (tmpToken !== "") {
         tokens.push(tmpToken.trimEnd());
         tmpToken = "";
@@ -63,6 +67,7 @@ function tokenizer(input: string): Token[] {
       tokens.push(targetChar);
       current++;
     } else if (targetChar === "{") {
+      curlyBracketNestCount++;
       if (tmpToken !== "") {
         tokens.push(tmpToken);
         tmpToken = "";
@@ -70,14 +75,19 @@ function tokenizer(input: string): Token[] {
       tokens.push(targetChar);
       current++;
       searchingCommandName = true;
-    } else if (targetChar == "}") {
+    } else if (targetChar == "}" && curlyBracketNestCount > 0) {
+      curlyBracketNestCount--;
       if (tmpToken !== "") {
         tokens.push(tmpToken.trim());
         tmpToken = "";
       }
       tokens.push(targetChar);
       current++;
-    } else if (targetChar === ",") {
+    } else if (
+      targetChar === "," &&
+      (squareBracketNestCount > 0 || curlyBracketNestCount > 0 ||
+        angleBracketNestCount > 0)
+    ) {
       tokens.push(tmpToken);
       tmpToken = "";
       tokens.push(targetChar);
@@ -134,6 +144,11 @@ Deno.test("nested bracket pair", () => {
 
 Deno.test("example", () => {
   const tokens = tokenizer("{li arg1, arg2}");
+  assertEquals(tokens, ["{", "li", "arg1", ",", "arg2", "}"]);
+});
+
+Deno.test("example", () => {
+  const tokens = tokenizer("{li arg1, arg2 }");
   assertEquals(tokens, ["{", "li", "arg1", ",", "arg2", "}"]);
 });
 
