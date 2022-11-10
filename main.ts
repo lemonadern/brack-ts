@@ -1,6 +1,12 @@
 import { assertEquals } from "https://deno.land/std@0.161.0/testing/asserts.ts";
 
-// type TokenType = "CurlyBracket" | "SquareBracket" | "Letter" | "Comma";
+// type TokenType =
+//   | "CurlyBracket"
+//   | "SquareBracket"
+//   | "AngleBracket"
+//   | "Command"
+//   | "Comma"
+//   | "LiteralArgument";
 // type TokenValue = "{" | "}" | "[" | "]" | "," | string;
 // type Token = {
 //   type: TokenType;
@@ -35,7 +41,7 @@ export function tokenizer(input: string): Token[] {
     } else if (targetChar === "<") {
       angleBracketNestCount++;
       if (tmpToken !== "") {
-        tokens.push(tmpToken);
+        tokens.push(tmpToken.trim());
         tmpToken = "";
       }
       tokens.push(targetChar);
@@ -52,7 +58,7 @@ export function tokenizer(input: string): Token[] {
     } else if (targetChar === "[") {
       squareBracketNestCount++;
       if (tmpToken !== "") {
-        tokens.push(tmpToken);
+        tokens.push(tmpToken.trim());
         tmpToken = "";
       }
       tokens.push(targetChar);
@@ -61,7 +67,7 @@ export function tokenizer(input: string): Token[] {
     } else if (targetChar == "]" && squareBracketNestCount > 0) {
       squareBracketNestCount--;
       if (tmpToken !== "") {
-        tokens.push(tmpToken.trimEnd());
+        tokens.push(tmpToken.trim());
         tmpToken = "";
       }
       tokens.push(targetChar);
@@ -69,7 +75,7 @@ export function tokenizer(input: string): Token[] {
     } else if (targetChar === "{") {
       curlyBracketNestCount++;
       if (tmpToken !== "") {
-        tokens.push(tmpToken);
+        tokens.push(tmpToken.trim());
         tmpToken = "";
       }
       tokens.push(targetChar);
@@ -88,13 +94,13 @@ export function tokenizer(input: string): Token[] {
       (squareBracketNestCount > 0 || curlyBracketNestCount > 0 ||
         angleBracketNestCount > 0)
     ) {
-      tokens.push(tmpToken.trimEnd());
+      tokens.push(tmpToken.trim());
       tmpToken = "";
       tokens.push(targetChar);
       current++;
     } else if (targetChar === " " && searchingCommandName) {
       if (tmpToken !== "") {
-        tokens.push(tmpToken);
+        tokens.push(tmpToken.trim());
         tmpToken = "";
         current++;
       }
@@ -105,10 +111,22 @@ export function tokenizer(input: string): Token[] {
     }
   }
   if (tmpToken !== "") {
-    tokens.push(tmpToken);
+    tokens.push(tmpToken.trim());
   }
   return tokens;
 }
+
+Deno.test("ex", () => {
+  const text = "{list {* strong text is here}}";
+  const expected = ["{", "list", "{", "*", "strong text is here", "}", "}"];
+  assertEquals(tokenizer(text), expected);
+});
+
+Deno.test("including new line", () => {
+  const text = "{list\n {* strong text is here]]]}}";
+  const expected = ["{", "list", "{", "*", "strong text is here]]]", "}", "}"];
+  assertEquals(tokenizer(text), expected);
+});
 
 Deno.test("escaped bracket", () => {
   const tokens = tokenizer("\<");
@@ -181,15 +199,17 @@ Deno.test("escaped bracket", () => {
 });
 
 Deno.test("example a", () => {
-  const tokens = tokenizer("{li this is whitespace , hi, me}");
+  const tokens = tokenizer(
+    "{li this is whitespace , hi\\,i'm here , your *bracket* is nice!! }",
+  );
   assertEquals(tokens, [
     "{",
     "li",
     "this is whitespace",
     ",",
-    "hi",
+    "hi,i'm here",
     ",",
-    "me",
+    "your *bracket* is nice!!",
     "}",
   ]);
 });
