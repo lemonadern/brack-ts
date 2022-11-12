@@ -20,6 +20,22 @@ type AST = {
   children: Node[];
 };
 
-export function parser(tokens: Token[]): AST {
-  // todo: imprement
+export function parser(tokens: Token[]) {
+  let index = 0;
+
+  function parse(): Node {
+    // todo: implement
+  }
+
+  // immutable
+  const ast: AST = {
+    kind: "root",
+    children: [],
+  };
+
+  while (index > tokens.length) {
+    ast.children.push(parse());
+  }
+
+  return ast;
 }
