@@ -13,7 +13,7 @@ import { assertEquals } from "https://deno.land/std@0.161.0/testing/asserts.ts";
 //   value: TokenValue;
 // };
 
-type Token = string;
+export type Token = string;
 
 export function tokenizer(input: string): Token[] {
   // immutable array
