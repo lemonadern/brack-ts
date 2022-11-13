@@ -21,10 +21,18 @@ type AST = {
 };
 
 export function parser(tokens: Token[]) {
-  let index = 0;
+  let i = 0;
 
   function parse(): Node {
-    // todo: implement
+    let token = tokens[i];
+
+    if (token.kind === "text") {
+      i++;
+      return {
+        kind: "text",
+        value: token.value,
+      };
+    }
   }
 
   // immutable
@@ -33,7 +41,7 @@ export function parser(tokens: Token[]) {
     children: [],
   };
 
-  while (index > tokens.length) {
+  while (i > tokens.length) {
     ast.children.push(parse());
   }
 

@@ -39,7 +39,7 @@ type TextToken = {
   value: string;
 };
 
-type Token =
+export type Token =
   | CurlyBracketToken
   | SquareBracketToken
   | AngleBracketToken
