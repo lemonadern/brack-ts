@@ -2,7 +2,7 @@ import { assertEquals } from "https://deno.land/std@0.161.0/testing/asserts.ts";
 import { describe, it } from "https://deno.land/std@0.164.0/testing/bdd.ts";
 
 import { tokenize } from "./tokenizer.ts";
-import { Token } from "./types.ts";
+import { Token } from "./tokenTypes.ts";
 
 // BDD からの逃避
 const test = it;

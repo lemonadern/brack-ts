@@ -1,4 +1,4 @@
-import { Token } from "./types.ts";
+import { Token } from "./tokenTypes.ts";
 
 export function tokenize(input: string): Token[] {
   // immutable array
