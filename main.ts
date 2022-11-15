@@ -3,7 +3,9 @@ import {
   assertEquals,
   assertIsError,
 } from "https://deno.land/std@0.161.0/testing/asserts.ts";
-import { err, ok, Result } from "npm:neverthrow";
+
+import { err, ok, Result } from "npm:neverthrow@5.1.0";
+
 import { Token } from "./tokenTypes.ts";
 
 type Node = ExpressionNode | AtomNode;
