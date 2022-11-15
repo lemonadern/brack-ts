@@ -3,11 +3,12 @@ import {
   assertEquals,
   assertIsError,
 } from "https://deno.land/std@0.161.0/testing/asserts.ts";
+import { describe, it } from "https://deno.land/std@0.164.0/testing/bdd.ts";
 
 import { err, ok, Result } from "npm:neverthrow@5.1.0";
 import { Token } from "./tokenTypes.ts";
 
-const test = Deno.test;
+const test = it;
 
 type Node = ExpressionNode | AtomNode;
 
@@ -45,42 +46,32 @@ export const parse = (tokens: Token[]): AST => {
 {
   /*
   parseExpression
-    - token[i] が opening bracket のとき
-      - コマンド名を読む
-        - parseCommand ?
-      - expression の node をつくる
-      - 引数を読む
-        - parseExpression(recursion) ? or parseArgument ?
- */
-}
-
-{
-  /*
-  parseExpression
     - parseBlock
       - parseCommand
       - parseExpression (recursion)
+      - consume curlyBracket
     - parseInline
       - parseCommand
-      - parseExpression (recursion)
+      - parseInline (recursion)
+      - consume squareBracket
 
  */
 }
 
-const parseExpression = () => {};
+// const parseExpression = (tokens: Token[], index: number): ParseResult<Node> => {};
 
 class ParseError extends Error {}
-class ConsumeError extends Error {}
 
 type NodeAndIndex<T extends Node> = { node: T; index: number };
 type ParseResult<N extends Node> = Result<NodeAndIndex<N>, ParseError>;
 
+class ConsumeError extends Error {}
 type ConsumeResult = Result<number, ConsumeError>;
 
 const consume = (
   tokens: Token[],
   index: number,
-  target: Partial<Token>,
+  target: Partial<Token>, // todo: update to appropreate type that accepts either `kind` or `value`
 ): ConsumeResult => {
   const { kind, value } = tokens[index];
   const { kind: targetKind, value: targetValue } = target;
@@ -100,49 +91,51 @@ const consume = (
   return err(new ConsumeError("Cannnot consume the token."));
 };
 
-test("Happy path: consume with kind", () => {
-  const tokens: Token[] = [{ kind: "comma", value: "," }];
+describe("consume", () => {
+  test("Happy path: consume with kind", () => {
+    const tokens: Token[] = [{ kind: "comma", value: "," }];
 
-  const result = consume(tokens, 0, { kind: "comma" });
+    const result = consume(tokens, 0, { kind: "comma" });
 
-  assert(result.isOk);
-  assertEquals(result._unsafeUnwrap(), 1);
-});
+    assert(result.isOk);
+    assertEquals(result._unsafeUnwrap(), 1);
+  });
 
-test("Sad path: target does not match the token (with kind)", () => {
-  const tokens: Token[] = [{ kind: "comma", value: "," }];
+  test("Sad path: target does not match the token (with kind)", () => {
+    const tokens: Token[] = [{ kind: "comma", value: "," }];
 
-  const result = consume(tokens, 0, { kind: "text" });
+    const result = consume(tokens, 0, { kind: "text" });
 
-  assert(result.isErr);
-  assertIsError(result._unsafeUnwrapErr(), ConsumeError, "didn't match");
-});
+    assert(result.isErr);
+    assertIsError(result._unsafeUnwrapErr(), ConsumeError, "didn't match");
+  });
 
-test("Happy path: consume with value", () => {
-  const tokens: Token[] = [{ kind: "text", value: "hi, you" }];
+  test("Happy path: consume with value", () => {
+    const tokens: Token[] = [{ kind: "text", value: "hi, you" }];
 
-  const result = consume(tokens, 0, { value: "hi, you" });
+    const result = consume(tokens, 0, { value: "hi, you" });
 
-  assert(result.isOk);
-  assertEquals(result._unsafeUnwrap(), 1);
-});
+    assert(result.isOk);
+    assertEquals(result._unsafeUnwrap(), 1);
+  });
 
-test("Sad path: target does not match the token (with value)", () => {
-  const tokens: Token[] = [{ kind: "comma", value: "," }];
+  test("Sad path: target does not match the token (with value)", () => {
+    const tokens: Token[] = [{ kind: "comma", value: "," }];
 
-  const result = consume(tokens, 0, { value: "}" });
+    const result = consume(tokens, 0, { value: "}" });
 
-  assert(result.isErr);
-  assertIsError(result._unsafeUnwrapErr(), ConsumeError, "didn't match");
-});
+    assert(result.isErr);
+    assertIsError(result._unsafeUnwrapErr(), ConsumeError, "didn't match");
+  });
 
-test("Sad path: target doesn't have any props", () => {
-  const tokens: Token[] = [{ kind: "comma", value: "," }];
+  test("Sad path: target doesn't have any props", () => {
+    const tokens: Token[] = [{ kind: "comma", value: "," }];
 
-  const result = consume(tokens, 0, {});
+    const result = consume(tokens, 0, {});
 
-  assert(result.isErr);
-  assertIsError(result._unsafeUnwrapErr(), ConsumeError, "Cannnot consume");
+    assert(result.isErr);
+    assertIsError(result._unsafeUnwrapErr(), ConsumeError, "Cannnot consume");
+  });
 });
 
 const parseText = (
@@ -159,34 +152,34 @@ const parseText = (
   return err(new ParseError("not a text node"));
 };
 
-test("parseText: ok path", () => {
-  const tokens: Token[] = [
-    { kind: "comma", value: "," },
-    { kind: "text", value: "hi, this is text." },
-    { kind: "comma", value: "," },
-  ];
-  const resultNode = parseText(tokens, 1);
-  assert(resultNode.isOk);
+describe("parseText", () => {
+  test("Happy path", () => {
+    const tokens: Token[] = [
+      { kind: "comma", value: "," },
+      { kind: "text", value: "hi, this is text." },
+    ];
+    const resultNode = parseText(tokens, 1);
+    assert(resultNode.isOk);
 
-  const expected = {
-    node: {
-      kind: "text",
-      value: "hi, this is text.",
-    },
-    index: 2,
-  };
+    const expected = {
+      node: {
+        kind: "text",
+        value: "hi, this is text.",
+      },
+      index: 2,
+    };
 
-  assertEquals(resultNode._unsafeUnwrap(), expected);
-});
+    assertEquals(resultNode._unsafeUnwrap(), expected);
+  });
 
-test("parseText: err path", () => {
-  const tokens: Token[] = [
-    { kind: "comma", value: "," },
-    { kind: "text", value: "hi, this is text." },
-    { kind: "comma", value: "," },
-  ];
-  const resultNode = parseText(tokens, 2);
-  assert(resultNode.isErr);
+  test("Err path: token isn't a text", () => {
+    const tokens: Token[] = [
+      { kind: "text", value: "hi, this is text." },
+      { kind: "comma", value: "," },
+    ];
+    const resultNode = parseText(tokens, 1);
+    assert(resultNode.isErr);
 
-  assertIsError(resultNode._unsafeUnwrapErr(), ParseError, "text");
+    assertIsError(resultNode._unsafeUnwrapErr(), ParseError, "text");
+  });
 });
