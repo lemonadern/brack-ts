@@ -7,9 +7,9 @@
   - [ ] parse block
   - [ ] parse inline
   - [ ] parse macro
-  - [ ] parse text
-  - [ ] consumer
-  - [ ] consume command
+  - [x] parse text
+  - [x] consumer
+  - [x] consume command
 - [ ] Parse macros, and Rebuild AST
 - [ ] Interface between brack and ReactNode
 - [ ] Generate ReactNode from AST

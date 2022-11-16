@@ -91,6 +91,23 @@ class ParseError extends Error {}
 type NodeAndIndex<T extends Node> = { node: T; index: number };
 type ParseResult<N extends Node> = Result<NodeAndIndex<N>, ParseError>;
 
+type InlineNode = {
+  command: string;
+  arguments: InlineNodeArguments[];
+};
+type InlineNodeArguments = InlineNode | TextNode;
+
+const parseInline = (tokens: Token[]) => (index: number): ParseResult<Node> => {
+  const { kind, value } = tokens[index];
+  const node: InlineNode = { command, arguments: [] };
+
+  const { command, i } = consume(tokens, index, { value: "[" })
+    .andThen(consumeCommand(tokens))
+    .match((o) => ok(o), () => {
+      return err(new ParseError("Cannot parse tokens as InlineNode"));
+    });
+};
+
 class ConsumeError extends Error {}
 type ConsumeResult = Result<number, ConsumeError>;
 
@@ -269,19 +286,17 @@ type TextNode = {
   value: string;
 };
 
-const parseText = (
-  tokens: Token[],
-  index: number,
-): ParseResult<TextNode> => {
-  const { kind, value } = tokens[index];
-  if (kind === "text") {
-    return ok({
-      node: { kind, value },
-      index: index + 1,
-    });
-  }
-  return err(new ParseError("not a text token."));
-};
+const parseText =
+  (tokens: Token[]) => (index: number): ParseResult<TextNode> => {
+    const { kind, value } = tokens[index];
+    if (kind === "text") {
+      return ok({
+        node: { kind, value },
+        index: index + 1,
+      });
+    }
+    return err(new ParseError("not a text token."));
+  };
 
 describe("parseText", () => {
   test("Happy path", () => {
