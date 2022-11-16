@@ -5,6 +5,7 @@ import {
 } from "https://deno.land/std@0.161.0/testing/asserts.ts";
 import { describe, it } from "https://deno.land/std@0.164.0/testing/bdd.ts";
 
+import { Option } from "npm:fp-ts/lib/Option.ts";
 import { err, ok, Result } from "npm:neverthrow@5.1.0";
 import { Token } from "./tokenTypes.ts";
 
@@ -12,13 +13,9 @@ const test = it;
 
 type Node = ExpressionNode | AtomNode;
 
-type AtomNodeKind = "command" | "text";
-type AtomNode = {
-  kind: AtomNodeKind;
-  value: string;
-};
+type AtomNode = CommandNode | TextNode;
 
-type ExpressionNodeKind = "block" | "inline" | "argument"; // todo: "macro"
+type ExpressionNodeKind = "block" | "inline" | "macro";
 type ExpressionNode = {
   kind: ExpressionNodeKind;
   value: string;
@@ -47,13 +44,42 @@ export const parse = (tokens: Token[]): AST => {
   /*
   parseExpression
     - parseBlock
-      - parseCommand
-      - parseExpression (recursion)
-      - consume curlyBracket
     - parseInline
-      - parseCommand
-      - parseInline (recursion)
-      - consume squareBracket
+    - parseMacro
+    - parseText
+
+  parseText
+    - token is a text
+
+  parseInline
+    - comsume "["
+    - parseCommand? consumeCommand?
+    - make inlineNode
+    - parse arguments (loop)
+      - parseText
+      - parseInline
+      - parseMacro?
+    - ok
+      - add node to block's arguments
+      - comsume "]"
+      - return inlineNode
+    err: cannnot parse tokens as inline
+
+  parseBlock
+    - comsume "{"
+    - parseCommand? consumeCommand?
+    - parse arguments (loop)
+      - parseText
+      - parseInline
+      - parseMacro?
+    - ok
+      - add node to block's arguments
+      - consume "}"
+      - return parseBlock
+    err: cannnot parse tokens as block
+
+  parseMacro
+    - ***** todo *****
 
  */
 }
@@ -138,10 +164,96 @@ describe("consume", () => {
   });
 });
 
+// use consumeCommand or parseCommand (considering)
+
+class ConsumeCommandError extends Error {}
+type CommandName = string;
+type ConsumeCommandResult = Result<CommandName, ConsumeCommandError>;
+
+// todo: consumer must return index
+const consumeCommand =
+  (tokens: Token[]) => (index: number): ConsumeCommandResult => {
+    const { kind, value } = tokens[index];
+    if (kind === "command") {
+      return ok(value);
+    }
+    return err(new ConsumeCommandError("cannot consume command."));
+  };
+
+describe("consumeCommand", () => {
+  test("Happy path", () => {
+    const tokens: Token[] = [{ kind: "command", value: "bold" }];
+    const result = consumeCommand(tokens)(0);
+    assert(result.isOk);
+
+    assertEquals(result._unsafeUnwrap(), "bold");
+  });
+
+  test("Err path: token isn't a command", () => {
+    const tokens: Token[] = [
+      { kind: "text", value: "hi, this is text." },
+    ];
+    const resultNode = consumeCommand(tokens)(0);
+    assert(resultNode.isErr);
+
+    assertIsError(
+      resultNode._unsafeUnwrapErr(),
+      ConsumeCommandError,
+      "cannot consume command",
+    );
+  });
+});
+
+type CommandNode = {
+  kind: "command";
+  value: string;
+};
+
+const parseCommand =
+  (tokens: Token[]) => (index: number): ParseResult<CommandNode> => {
+    const { kind, value } = tokens[index];
+    if (kind === "command") {
+      return ok({
+        node: { kind, value },
+        index: index + 1,
+      });
+    }
+    return err(new ParseError("not a command token."));
+  };
+
+describe("parseCommand", () => {
+  test("Happy Path", () => {
+    const tokens: Token[] = [{ kind: "command", value: "bold" }];
+    const result = parseCommand(tokens)(0);
+    assert(result.isOk);
+
+    const expected = {
+      node: { kind: "command", value: "bold" },
+      index: 1,
+    };
+    assertEquals(result._unsafeUnwrap(), expected);
+  });
+
+  test("Err path: token isn't a command", () => {
+    const tokens: Token[] = [
+      { kind: "text", value: "hi, this is text." },
+    ];
+    const resultNode = parseCommand(tokens)(0);
+    assert(resultNode.isErr);
+
+    assertIsError(resultNode._unsafeUnwrapErr(), ParseError, "command");
+  });
+});
+
+type TextNode = {
+  kind: "text";
+  value: string;
+};
+
 const parseText = (
   tokens: Token[],
   index: number,
-): ParseResult<AtomNode> => {
+): ParseResult<TextNode> => {
   const { kind, value } = tokens[index];
   if (kind === "text") {
     return ok({
@@ -149,7 +261,7 @@ const parseText = (
       index: index + 1,
     });
   }
-  return err(new ParseError("not a text node"));
+  return err(new ParseError("not a text token."));
 };
 
 describe("parseText", () => {
