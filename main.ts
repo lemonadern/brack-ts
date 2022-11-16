@@ -183,15 +183,18 @@ describe("consume", () => {
 // use consumeCommand or parseCommand (considering)
 
 class ConsumeCommandError extends Error {}
-type CommandName = string;
-type ConsumeCommandResult = Result<CommandName, ConsumeCommandError>;
+type CommandNameAndIndex = {
+  command: string;
+  index: number;
+};
+type ConsumeCommandResult = Result<CommandNameAndIndex, ConsumeCommandError>;
 
 // todo: consumer must return index
 const consumeCommand =
   (tokens: Token[]) => (index: number): ConsumeCommandResult => {
     const { kind, value } = tokens[index];
     if (kind === "command") {
-      return ok(value);
+      return ok({ command: value, index: index + 1 });
     }
     return err(new ConsumeCommandError("cannot consume command."));
   };
@@ -202,7 +205,7 @@ describe("consumeCommand", () => {
     const result = consumeCommand(tokens)(0);
     assert(result.isOk);
 
-    assertEquals(result._unsafeUnwrap(), "bold");
+    assertEquals(result._unsafeUnwrap(), { command: "bold", index: 1 });
   });
 
   test("Err path: token isn't a command", () => {
