@@ -102,19 +102,26 @@ const consume = (
   const { kind, value } = tokens[index];
   const { kind: targetKind, value: targetValue } = target;
 
-  if (targetKind) {
-    return targetKind === kind
-      ? ok(index + 1)
-      : err(new ConsumeError("Target didn't match the token."));
+  const kindEqualsTarget = kind === targetKind;
+  const valueEqualsTarget = value === targetValue;
+
+  if (!targetKind && !targetValue) {
+    return err(new ConsumeError("Cannot consume: Specify the target."));
   }
 
-  if (targetValue) {
-    return targetValue === value
-      ? ok(index + 1)
-      : err(new ConsumeError("Target didn't match the token."));
+  if (kindEqualsTarget && valueEqualsTarget) {
+    return ok(index + 1);
   }
 
-  return err(new ConsumeError("Cannnot consume the token."));
+  if (!targetValue && kindEqualsTarget) {
+    return ok(index + 1);
+  }
+
+  if (!targetKind && valueEqualsTarget) {
+    return ok(index + 1);
+  }
+
+  return err(new ConsumeError("Target didn't match the target."));
 };
 
 describe("consume", () => {
@@ -154,13 +161,22 @@ describe("consume", () => {
     assertIsError(result._unsafeUnwrapErr(), ConsumeError, "didn't match");
   });
 
+  test("Sad path: target is invalid token", () => {
+    const tokens: Token[] = [{ kind: "curlyBracket", value: "{" }];
+
+    const result = consume(tokens, 0, { kind: "curlyBracket", value: "}" });
+
+    assert(result.isErr);
+    assertIsError(result._unsafeUnwrapErr(), ConsumeError, "didn't match");
+  });
+
   test("Sad path: target doesn't have any props", () => {
     const tokens: Token[] = [{ kind: "comma", value: "," }];
 
     const result = consume(tokens, 0, {});
 
     assert(result.isErr);
-    assertIsError(result._unsafeUnwrapErr(), ConsumeError, "Cannnot consume");
+    assertIsError(result._unsafeUnwrapErr(), ConsumeError, "Cannot consume");
   });
 });
 
